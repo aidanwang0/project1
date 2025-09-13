@@ -70,7 +70,8 @@ Instruction simDecode(Instruction inst) {
     inst.funct3 = inst.instruction >> 12 & 0b111;
     inst.rd = inst.instruction >> 7 & 0b11111;
     inst.rs1 = inst.instruction >> 15 & 0b11111;
-
+    inst.rs2 = inst.instruction >> 20 & 0b11111;
+    // printf("opcode = %llu\n", (unsigned long long)inst.opcode);
     if (inst.instruction == 0xfeedfeed) {
         inst.isHalt = true;
         return inst; // halt instruction
@@ -92,9 +93,20 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+        case OP_R_64BIT:
+            if (inst.funct3 == FUNCT3_ADD) {
+                inst.doesArithLogic = true;
+                inst.writesRd = true;
+                inst.readsRs1 = true;
+                inst.readsRs2 = true;
+            } else {
+                inst.isLegal = false;
+            }
+            break;
         default:
             inst.isLegal = false;
     }
+    
     return inst;
 }
 
@@ -102,6 +114,7 @@ Instruction simDecode(Instruction inst) {
 Instruction simOperandCollection(Instruction inst, REGS regData) {
     
     inst.op1Val = regData.registers[inst.rs1];
+    inst.op2Val = regData.registers[inst.rs2];
 
     return inst;
 }
@@ -116,12 +129,22 @@ Instruction simNextPCResolution(Instruction inst) {
 
 // Perform arithmetic/logic operations
 Instruction simArithLogic(Instruction inst) {
-    uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
-    uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+    inst.opcode = inst.instruction & 0b1111111;
+    switch (inst.opcode) {
+        case OP_INTIMM: {
+            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
 
-    inst.arithResult = inst.op1Val + sext_imm12;
-      
+            inst.arithResult = inst.op1Val + sext_imm12;
+            break;
+        }   
+        case OP_R_64BIT: {
+            inst.arithResult = inst.op1Val + inst.op2Val;
+            break;
+        }
+    }
     return inst;
+    
 }
 
 // Generate memory address for load/store instructions

@@ -29,7 +29,9 @@ uint64_t PC;
 enum OPCODES {
     // I-type opcodes
     OP_INTIMM  = 0b0010011, // Integer ALU immediate instructions addi, slli, slti, sltiu, xori, srli, srai, ori, andi
-    // ...
+    // R-type opcodes
+    OP_R_64BIT = 0b0110011, //64 bit ALU instructions add, sub, sll, slt, sltu, xor, srl, sra, or, and
+    
 };
 
 enum FUNCT3 {
