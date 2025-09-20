@@ -29,21 +29,29 @@ uint64_t PC;
 enum OPCODES {
     // I-type opcodes
     OP_INTIMM  = 0b0010011, // Integer ALU immediate instructions addi, slli, slti, sltiu, xori, srli, srai, ori, andi
+    OP_WINTIMM = 0b0011011, // Integer ALU (word) immediate instructions addiw, slliw, srliw, sraiw
     // R-type opcodes
     OP_R_64BIT = 0b0110011, //64 bit ALU instructions add, sub, sll, slt, sltu, xor, srl, sra, or, and
-    
+    OP_R_32BIT = 0b0111011, //32 bit ALU instructions adsdw, subw, sllw, srlw, sraw
+    // U-type opcode
+    OP_U_AUIPC = 0b0010111, // add upper immediate to PC
+
 };
 
 enum FUNCT3 {
     // For integer ALU instructions
-    FUNCT3_ARITH  = 0b000, // add, sub
+    FUNCT3_ARITH  = 0b000, // add, sub, addi, addiw
+    FUNCT3_AND = 0b111, // and, andi
+    FUNCT3_OR = 0b110, // or, ori
+    FUNCT3_XOR = 0b100, // xor
+    FUNCT3_SHIFT = 0b101, //sra
     // ...
 };
 
 enum RI_FUNCT7 {
     // for R type add/sub instruction
-    FUNCT7_ADD     = 0b0000000, // add
-    FUNCT7_SUB     = 0b0100000, //sub
+    FUNCT7_ADD     = 0b0000000, // add, and, or, xor
+    FUNCT7_SUBSHIFT     = 0b0100000, //sub, sra
     // ...
 };
 

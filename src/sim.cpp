@@ -85,27 +85,60 @@ Instruction simDecode(Instruction inst) {
 
     switch (inst.opcode) {
         case OP_INTIMM:
-            if (inst.funct3 == FUNCT3_ARITH) {
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_XOR)  {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
                 inst.readsRs2 = false;
-            } else {
+            } 
+            else {
+                inst.isLegal = false;
+            }
+            break;
+        case OP_U_AUIPC:
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
+            break;
+            
+        case OP_WINTIMM:
+            if (inst.funct3==FUNCT3_ARITH){
+                inst.doesArithLogic = true;
+                inst.writesRd = true;
+                inst.readsRs1 = true;
+                inst.readsRs2 = false;
+            }
+            else {
                 inst.isLegal = false;
             }
             break;
 
         case OP_R_64BIT:
-            if (inst.funct3 == FUNCT3_ARITH) {
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_AND || inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_XOR  ||inst.funct3 == FUNCT3_SHIFT) {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
                 inst.readsRs2 = true;
-            } 
+            }
             else { 
                 inst.isLegal = false;
             }
             break;
+        
+        case OP_R_32BIT:
+            if (inst.funct3 == FUNCT3_ARITH){
+                inst.doesArithLogic = true;
+                inst.writesRd = true;
+                inst.readsRs1 = true;
+                inst.readsRs2 = true;
+            }
+            else { 
+                inst.isLegal = false;
+            }
+            break;
+            
+        
         default:
             inst.isLegal = false;
     }
@@ -138,18 +171,75 @@ Instruction simArithLogic(Instruction inst) {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
             uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
 
-            inst.arithResult = inst.op1Val + sext_imm12;
+            if (inst.funct3 == FUNCT3_ARITH){
+                inst.arithResult = inst.op1Val + sext_imm12;
+            }
+
+            else if (inst.funct3 == FUNCT3_AND){
+                inst.arithResult = inst.op1Val & sext_imm12;
+            }
+
+            else if (inst.funct3 == FUNCT3_OR){
+                inst.arithResult = inst.op1Val | sext_imm12;
+            }
+
+            else if(inst.funct3 == FUNCT3_XOR){
+                inst.arithResult = inst.op1Val ^ sext_imm12;
+            }
+
             break;
         }   
-        case OP_R_64BIT: {
 
-            if (inst.funct7== FUNCT7_ADD){
-                inst.arithResult = inst.op1Val + inst.op2Val;
-            }
-            else if (inst.funct7 == FUNCT7_SUB){
-                inst.arithResult = inst.op1Val - inst.op2Val;
+        case OP_U_AUIPC: {
+            uint64_t imm12  = inst.instruction >> 12 & 0b11111111111111111111;
+            inst.arithResult = inst.PC + imm12;
+            break;
+
+        }
+
+        case OP_WINTIMM: {
+            
+            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
+            if (inst.funct3 == FUNCT3_ARITH){
+                inst.arithResult = inst.op1Val + imm12;
             }
             break;
+        }
+
+        case OP_R_64BIT: {
+            if (inst.funct3 == FUNCT3_AND && inst.funct7 == FUNCT7_ADD){
+                inst.arithResult = inst.op1Val & inst.op2Val;
+            }
+            else if (inst.funct3 == FUNCT3_OR && inst.funct7 == FUNCT7_ADD){
+                inst.arithResult = inst.op1Val | inst.op2Val;
+            }
+            else if (inst.funct3 == FUNCT3_XOR && inst.funct7 == FUNCT7_ADD) {
+                inst.arithResult = inst.op1Val ^ inst.op2Val;
+            }
+            else if (inst.funct7 == FUNCT7_ADD){
+                inst.arithResult = inst.op1Val + inst.op2Val;
+            }
+            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH){
+                inst.arithResult = inst.op1Val - inst.op2Val;
+            }
+            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_SHIFT){
+                uint64_t shamt = inst.op2Val & 0x3F; // shift amount 0-63
+                int64_t val = (int64_t)inst.op1Val;              
+                inst.arithResult = val >> shamt; 
+            }            
+            break;
+        }
+
+        case OP_R_32BIT:{
+            if (inst.funct7== FUNCT7_ADD){
+                int32_t sum32 = (int32_t)(inst.op1Val + inst.op2Val); // truncate to 32 bits
+                inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
+            }
+
+            if (inst.funct7 == FUNCT7_SUBSHIFT) {
+                int32_t sum32 = (int32_t)(inst.op1Val - inst.op2Val); // truncate to 32 bits
+                inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
+            }
         }
     }
     return inst;
