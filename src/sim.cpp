@@ -85,7 +85,7 @@ Instruction simDecode(Instruction inst) {
 
     switch (inst.opcode) {
         case OP_INTIMM:
-            if (inst.funct3 == FUNCT3_ADD) {
+            if (inst.funct3 == FUNCT3_ARITH) {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
