@@ -35,16 +35,18 @@ enum OPCODES {
     OP_R_32BIT = 0b0111011, //32 bit ALU instructions adsdw, subw, sllw, srlw, sraw
     // U-type opcode
     OP_U_AUIPC = 0b0010111, // add upper immediate to PC
+    OP_SB_BRANCH = 0b1100011, // branch instructions
 
 };
 
 enum FUNCT3 {
     // For integer ALU instructions
-    FUNCT3_ARITH  = 0b000, // add, sub, addi, addiw
+    FUNCT3_ARITH  = 0b000, // add, sub, addi, addiw, beq
     FUNCT3_AND = 0b111, // and, andi
     FUNCT3_OR = 0b110, // or, ori
     FUNCT3_XOR = 0b100, // xor
-    FUNCT3_SHIFT = 0b101, //sra
+    FUNCT3_RSHIFT = 0b101, //sra, sraw
+    FUNCT3_LSHIFT = 0b001, //sll
     // ...
 };
 

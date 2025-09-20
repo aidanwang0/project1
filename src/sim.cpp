@@ -95,6 +95,19 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+
+        case OP_SB_BRANCH:
+            if (inst.funt3== FUNCT3_ARITH){
+                inst.doesArithLogic = true;
+                inst.writesRd = false;
+                inst.writesRs1 = false;
+                inst.writeRs2 = false;
+            }
+            else {
+                inst.isLegal = false;
+            }
+            break;
+
         case OP_U_AUIPC:
             inst.doesArithLogic = true;
             inst.writesRd = true;
@@ -115,7 +128,8 @@ Instruction simDecode(Instruction inst) {
             break;
 
         case OP_R_64BIT:
-            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_AND || inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_XOR  ||inst.funct3 == FUNCT3_SHIFT) {
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_AND || inst.funct3 == FUNCT3_OR ||
+                 inst.funct3 == FUNCT3_XOR  || inst.funct3 == FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT) {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -127,12 +141,13 @@ Instruction simDecode(Instruction inst) {
             break;
         
         case OP_R_32BIT:
-            if (inst.funct3 == FUNCT3_ARITH){
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_RSHIFT){
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
                 inst.readsRs2 = true;
             }
+    
             else { 
                 inst.isLegal = false;
             }
@@ -155,10 +170,24 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     return inst;
 }
 
+int32_t 
+
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst) {
+    inst.opcode = inst.instruction & 0b1111111
+    switch(inst.opcode){
+        case OP_SB_BRANCH: {
+            uint64_t 
+            if(inst.op1Val == inst.op2Val) {
+                
+                inst.nextPC = inst.PC + 
+            }
+        }
+        break;
 
-    inst.nextPC = inst.PC + 4;
+        inst.nextPC = inst.PC + 4; // default
+    }
+    
 
     return inst;
 }
@@ -222,7 +251,7 @@ Instruction simArithLogic(Instruction inst) {
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val - inst.op2Val;
             }
-            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_SHIFT){
+            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT){
                 uint64_t shamt = inst.op2Val & 0x3F; // shift amount 0-63
                 int64_t val = (int64_t)inst.op1Val;              
                 inst.arithResult = val >> shamt; 
@@ -236,9 +265,16 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
-            if (inst.funct7 == FUNCT7_SUBSHIFT) {
+            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH) {
                 int32_t sum32 = (int32_t)(inst.op1Val - inst.op2Val); // truncate to 32 bits
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
+            }
+
+            else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT) {
+                uint64_t shamt = inst.op2Val & 0x1F;                  // shift amount 0-31
+                int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
+                int32_t result32 = val32 >> shamt;                 
+                inst.arithResult = (int64_t)result32; //sign extend to 64 bits
             }
         }
     }
