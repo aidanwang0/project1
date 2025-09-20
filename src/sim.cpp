@@ -68,6 +68,7 @@ Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
 Instruction simDecode(Instruction inst) {
     inst.opcode = inst.instruction & 0b1111111;
     inst.funct3 = inst.instruction >> 12 & 0b111;
+    inst.funct7 = inst.instruction >> 25 & 0b1111111;
     inst.rd = inst.instruction >> 7 & 0b11111;
     inst.rs1 = inst.instruction >> 15 & 0b11111;
     inst.rs2 = inst.instruction >> 20 & 0b11111;
@@ -93,13 +94,15 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+
         case OP_R_64BIT:
-            if (inst.funct3 == FUNCT3_ADD) {
+            if (inst.funct3 == FUNCT3_ARITH) {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
                 inst.readsRs2 = true;
-            } else {
+            } 
+            else { 
                 inst.isLegal = false;
             }
             break;
@@ -139,7 +142,13 @@ Instruction simArithLogic(Instruction inst) {
             break;
         }   
         case OP_R_64BIT: {
-            inst.arithResult = inst.op1Val + inst.op2Val;
+
+            if (inst.funct7== FUNCT7_ADD){
+                inst.arithResult = inst.op1Val + inst.op2Val;
+            }
+            else if (inst.funct7 == FUNCT7_SUB){
+                inst.arithResult = inst.op1Val - inst.op2Val;
+            }
             break;
         }
     }

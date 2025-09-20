@@ -36,13 +36,14 @@ enum OPCODES {
 
 enum FUNCT3 {
     // For integer ALU instructions
-    FUNCT3_ADD  = 0b000, // add
+    FUNCT3_ARITH  = 0b000, // add, sub
     // ...
 };
 
 enum RI_FUNCT7 {
     // for R type add/sub instruction
     FUNCT7_ADD     = 0b0000000, // add
+    FUNCT7_SUB     = 0b0100000, //sub
     // ...
 };
 
