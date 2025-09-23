@@ -85,7 +85,8 @@ Instruction simDecode(Instruction inst) {
 
     switch (inst.opcode) {
         case OP_INTIMM:
-            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_XOR)  {
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || 
+                inst.funct3 == FUNCT3_XOR || inst.funct3== FUNCT3_RSHIFT)  {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -116,7 +117,7 @@ Instruction simDecode(Instruction inst) {
             break;
             
         case OP_WINTIMM:
-            if (inst.funct3==FUNCT3_ARITH){
+            if (inst.funct3==FUNCT3_ARITH || inst.fucnt3 == FUNCT3_RSHIFT){
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -215,9 +216,16 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = inst.op1Val | sext_imm12;
             }
 
-            //xor
+            //xori
             else if(inst.funct3 == FUNCT3_XOR){
                 inst.arithResult = inst.op1Val ^ sext_imm12;
+            }
+
+            //srai (not tested)
+            else if (inst.funct3 == FUNCT3_RSHIFT){
+                uint64_t shamt = inst.op1Val & sext_imm12; // shift amount 0-63
+                int64_t val = (int64_t)inst.op1Val;              
+                inst.arithResult = val >> shamt; 
             }
 
             break;
@@ -237,6 +245,11 @@ Instruction simArithLogic(Instruction inst) {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + imm12;
+            }
+
+            //sraiw(not tested)
+            else if (inst.funct3 == FUNCT3_RSHIFT){
+                
             }
             break;
         }

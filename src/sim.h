@@ -45,7 +45,7 @@ enum FUNCT3 {
     FUNCT3_AND = 0b111, // and, andi
     FUNCT3_OR = 0b110, // or, ori
     FUNCT3_XOR = 0b100, // xor
-    FUNCT3_RSHIFT = 0b101, //sra, sraw
+    FUNCT3_RSHIFT = 0b101, //sra, sraw, srai
     FUNCT3_LSHIFT = 0b001, //sll, sllw
     // ...
 };
