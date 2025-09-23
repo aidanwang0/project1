@@ -200,18 +200,22 @@ Instruction simArithLogic(Instruction inst) {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
             uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
 
+            //addi
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + sext_imm12;
             }
 
+            //andi
             else if (inst.funct3 == FUNCT3_AND){
                 inst.arithResult = inst.op1Val & sext_imm12;
             }
 
+            //ori
             else if (inst.funct3 == FUNCT3_OR){
                 inst.arithResult = inst.op1Val | sext_imm12;
             }
 
+            //xor
             else if(inst.funct3 == FUNCT3_XOR){
                 inst.arithResult = inst.op1Val ^ sext_imm12;
             }
@@ -219,6 +223,7 @@ Instruction simArithLogic(Instruction inst) {
             break;
         }   
 
+        //auipic
         case OP_U_AUIPC: {
             uint64_t imm12  = inst.instruction >> 12 & 0b11111111111111111111;
             inst.arithResult = inst.PC + imm12;
@@ -228,6 +233,7 @@ Instruction simArithLogic(Instruction inst) {
 
         case OP_WINTIMM: {
             
+            //addiw
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + imm12;
@@ -236,21 +242,39 @@ Instruction simArithLogic(Instruction inst) {
         }
 
         case OP_R_64BIT: {
+
+            //and
             if (inst.funct3 == FUNCT3_AND && inst.funct7 == FUNCT7_ADD){
                 inst.arithResult = inst.op1Val & inst.op2Val;
             }
+
+            //or
             else if (inst.funct3 == FUNCT3_OR && inst.funct7 == FUNCT7_ADD){
                 inst.arithResult = inst.op1Val | inst.op2Val;
             }
+
+            //xor
             else if (inst.funct3 == FUNCT3_XOR && inst.funct7 == FUNCT7_ADD) {
                 inst.arithResult = inst.op1Val ^ inst.op2Val;
             }
-            else if (inst.funct7 == FUNCT7_ADD){
+
+            //add
+            else if (inst.funct7 == FUNCT7_ADD && inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + inst.op2Val;
             }
+
+            //sub
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val - inst.op2Val;
             }
+
+            //srl
+            else if (inst.funct7 == FUNCT7_ADD && FUNCT3_RSHIFT){
+
+
+            }
+
+            //sra
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT){
                 uint64_t shamt = inst.op2Val & 0x3F; // shift amount 0-63
                 int64_t val = (int64_t)inst.op1Val;              
@@ -260,21 +284,30 @@ Instruction simArithLogic(Instruction inst) {
         }
 
         case OP_R_32BIT:{
-            if (inst.funct7== FUNCT7_ADD){
+            
+            //addw
+            if (inst.funct7== FUNCT7_ADD && inst.funct3==FUNCT3_ARITH){
                 int32_t sum32 = (int32_t)(inst.op1Val + inst.op2Val); // truncate to 32 bits
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
+            //subw
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH) {
                 int32_t sum32 = (int32_t)(inst.op1Val - inst.op2Val); // truncate to 32 bits
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
+            //sraw
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT) {
                 uint64_t shamt = inst.op2Val & 0x1F;                  // shift amount 0-31
                 int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32; //sign extend to 64 bits
+            }
+
+            //srlw
+            else if (inst.funct7 == ADD && inst.funct3 == FUNCT3_RSHIFT) {
+
             }
         }
     }
