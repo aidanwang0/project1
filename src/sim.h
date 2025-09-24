@@ -53,7 +53,7 @@ enum FUNCT3 {
 enum RI_FUNCT7 {
     // for R type add/sub instruction
     FUNCT7_ADD     = 0b0000000, // add, and, or, xor
-    FUNCT7_SUBSHIFT     = 0b0100000, //sub, sra
+    FUNCT7_SUBSHIFT     = 0b0100000, //sub, sra, sraiw
     // ...
 };
 

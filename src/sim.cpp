@@ -241,15 +241,18 @@ Instruction simArithLogic(Instruction inst) {
 
         case OP_WINTIMM: {
             
-            //addiw
+            //addiw (does this make sense??)
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + imm12;
             }
 
             //sraiw(not tested)
-            else if (inst.funct3 == FUNCT3_RSHIFT){
-                
+            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_SUBSHIFT){
+                uint64_t shamt = imm12 & 0x1F;                  // shift amount 0-31
+                int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
+                int32_t result32 = val32 >> shamt;                 
+                inst.arithResult = (int64_t)result32;   //sign extend to 64 bits
             }
             break;
         }
