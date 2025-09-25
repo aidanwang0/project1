@@ -198,8 +198,8 @@ Instruction simArithLogic(Instruction inst) {
     inst.opcode = inst.instruction & 0b1111111;
     switch (inst.opcode) {
         case OP_INTIMM: {
-            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
-            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
 
             //addi
             if (inst.funct3 == FUNCT3_ARITH){
@@ -223,11 +223,10 @@ Instruction simArithLogic(Instruction inst) {
 
             //srai (not tested)
             else if (inst.funct3 == FUNCT3_RSHIFT){
-                uint64_t shamt = inst.op1Val & sext_imm12; // shift amount 0-63
+                uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 int64_t val = (int64_t)inst.op1Val;              
                 inst.arithResult = val >> shamt; 
             }
-
             break;
         }   
 
@@ -241,15 +240,19 @@ Instruction simArithLogic(Instruction inst) {
 
         case OP_WINTIMM: {
             
-            //addiw (does this make sense??)
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
+            int32_t imm12_sext = (imm12 & 0x800) ? (imm12 | 0xFFFFF000) : imm12;
+
+            //addiw (does this make sense??)
             if (inst.funct3 == FUNCT3_ARITH){
-                inst.arithResult = inst.op1Val + imm12;
+                int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF); //truncate to 32 bits                
+                int32_t result32 = val32 + imm12_sext;
+                inst.arithResult = (int64_t)result32; //sign extend to 64 bits
             }
 
             //sraiw(not tested)
             else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_SUBSHIFT){
-                uint64_t shamt = imm12 & 0x1F;                  // shift amount 0-31
+                uint64_t shamt = (inst.instruction >> 20) & 0b11111    // shift amount lower 5 bits
                 int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32;   //sign extend to 64 bits
