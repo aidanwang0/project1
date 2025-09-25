@@ -250,9 +250,9 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = (int64_t)result32; //sign extend to 64 bits
             }
 
-            //sraiw(not tested)
+            //sraiw (shift right immediate, fill with sign bit) (not tested)
             else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_SUBSHIFT){
-                uint64_t shamt = (inst.instruction >> 20) & 0b11111    // shift amount lower 5 bits
+                uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
                 int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32;   //sign extend to 64 bits
@@ -287,23 +287,23 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = inst.op1Val - inst.op2Val;
             }
 
-            //srl (not tested)
+            //srl (shift right, fill leftmost bits with 0) (not tested)
             else if (inst.funct7 == FUNCT7_ADD && inst.funct3==FUNCT3_RSHIFT){
-                uint64_t shamt = inst.op2Val & 0x3F;   
+                uint64_t shamt = inst.op2Val & 0b111111;  //shift amount lower 6 bits 
                 uint64_t val = inst.op1Val;            // unsigned
                 inst.arithResult = val >> shamt;     
             }
 
-            //sra
+            //sra (shift right, fill left bits with sign bit)
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT){
-                uint64_t shamt = inst.op2Val & 0x3F; // shift amount 0-63
+                uint64_t shamt = inst.op2Val & 0b111111; // shift amount lower 6 bits
                 int64_t val = (int64_t)inst.op1Val;              
                 inst.arithResult = val >> shamt; 
             }           
             
-            //sll (not tested)
+            //sll (shift left, fill with 0) (not tested)
             else if (inst.funct7 == FUNCT7_ADD && inst.funct3==FUNCT3_LSHIFT){
-                uint64_t shamt = inst.op2Val & 0x3F;   
+                uint64_t shamt = inst.op2Val & 0b111111; //shift amount lower 6 bits
                 uint64_t val = inst.op1Val;            // unsigned
                 inst.arithResult = val << shamt;    
             }
@@ -325,7 +325,7 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
-            //srlw (not tested)
+            //srlw (shift left fill with 0 for 32 bit) (not tested) [need to write a test case]
             else if (inst.funct7 == FUNCT7_ADD && inst.funct3 == FUNCT3_RSHIFT) {
                 uint64_t shamt = inst.op2Val & 0x1F;                     // shift amount 0-31
                 uint32_t val32  = (uint32_t)(inst.op1Val & 0xFFFFFFFFu); // truncate to 32 bits (unsigned)
@@ -335,7 +335,7 @@ Instruction simArithLogic(Instruction inst) {
 
             //sraw
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT) {
-                uint64_t shamt = inst.op2Val & 0x1F;                  // shift amount 0-31
+                uint64_t shamt = inst.op2Val & 0b11111;                  // shift amount lower 5 bits
                 int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32; //sign extend to 64 bits
