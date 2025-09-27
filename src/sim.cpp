@@ -97,11 +97,11 @@ Instruction simDecode(Instruction inst) {
             break;
 
         case OP_SB_BRANCH:
-            if (inst.funt3== FUNCT3_ARITH){
+            if (inst.funct3== FUNCT3_ARITH){
                 inst.doesArithLogic = true;
                 inst.writesRd = false;
-                inst.writesRs1 = false;
-                inst.writeRs2 = false;
+                inst.readsRs1 = true;
+                inst.readsRs2 = true;
             }
             else {
                 inst.isLegal = false;
@@ -170,22 +170,31 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     return inst;
 }
 
-int32_t 
+int32_t getSBImmediate(Instruction inst) {
+
+    uint32_t bit12 = (inst.instruction >> 31) & 0b1;
+    uint32_t bits10_5 = (inst.instruction >> 25) & 0b111111;
+    uint32_t bit11 = (inst.instruction >> 7) & 0b1;
+    uint32_t bits4_1 = (inst.instruction >> 8) & 0b1111;
+
+    uint32_t immediate = (bit12 << 11) | (bit11 << 10) | (bits10_5 << 4) | (bits4_1);
+
+    return immediate;
+}
 
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst) {
-    inst.opcode = inst.instruction & 0b1111111
+    inst.opcode = inst.instruction & 0b1111111;
+    inst.nextPC = inst.PC + 4;
     switch(inst.opcode){
         case OP_SB_BRANCH: {
-            uint64_t 
-            if(inst.op1Val == inst.op2Val) {
-                
-                inst.nextPC = inst.PC + 
+            uint64_t imm12 = getSBImmediate(inst);
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+            if(inst.funct3 == FUNCT3_ARITH && inst.op1Val == inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
             }
         }
         break;
-
-        inst.nextPC = inst.PC + 4; // default
     }
     
 
