@@ -45,15 +45,15 @@ enum FUNCT3 {
     FUNCT3_AND = 0b111, // and, andi
     FUNCT3_OR = 0b110, // or, ori
     FUNCT3_XOR = 0b100, // xor
-    FUNCT3_RSHIFT = 0b101, //sra, sraw, srai
+    FUNCT3_RSHIFT = 0b101, //sra, sraw, srai, srli
     FUNCT3_LSHIFT = 0b001, //sll, sllw, slli,slliw
     // ...
 };
 
 enum RI_FUNCT7 {
     // for R type add/sub instruction
-    FUNCT7_ADDSHIFT     = 0b0000000, // add, and, or, xor, slliw
-    FUNCT7_SUBSHIFT     = 0b0100000, //sub, sra, sraiw, srai
+    FUNCT7_ADD     = 0b0000000, // add, and, or, xor, srli
+    FUNCT7_SUBSHIFT     = 0b0100000, //sub, sra, sraiw
     // ...
 };
 

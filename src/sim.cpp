@@ -1,4 +1,5 @@
 #include "sim.h"
+#include "inttypes.h"
 
 using namespace std;
 
@@ -98,11 +99,11 @@ Instruction simDecode(Instruction inst) {
             break;
 
         case OP_SB_BRANCH:
-            if (inst.funt3== FUNCT3_ARITH){
+            if (inst.funct3== FUNCT3_ARITH){
                 inst.doesArithLogic = true;
                 inst.writesRd = false;
-                inst.writesRs1 = false;
-                inst.writeRs2 = false;
+                inst.readsRs1 = true;
+                inst.readsRs2 = true;
             }
             else {
                 inst.isLegal = false;
@@ -171,22 +172,38 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     return inst;
 }
 
-int32_t 
+//constructs the immediate for sb types
+int32_t getSBImmediate(Instruction inst) {
+
+    uint32_t bit12 = (inst.instruction >> 31) & 0b1;
+    uint32_t bits10_5 = (inst.instruction >> 25) & 0b111111;
+    uint32_t bit11 = (inst.instruction >> 7) & 0b1;
+    uint32_t bits4_1 = (inst.instruction >> 8) & 0b1111;
+
+    uint32_t immediate = (bit12 << 11) | (bit11 << 10) | (bits10_5 << 4) | (bits4_1);
+
+    return immediate;
+}
 
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst) {
-    inst.opcode = inst.instruction & 0b1111111
+    inst.opcode = inst.instruction & 0b1111111;
+
+    // default case
+    inst.nextPC = inst.PC + 4;
+    printf("PC = %" PRIu64 "\n", inst.PC);
+    printf("nextPC = %" PRIu64 "\n", inst.nextPC);
     switch(inst.opcode){
         case OP_SB_BRANCH: {
-            uint64_t 
-            if(inst.op1Val == inst.op2Val) {
-                
-                inst.nextPC = inst.PC + 
+            uint64_t imm12 = getSBImmediate(inst);
+            printf("x = %" PRIu64 "\n", imm12);
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+            if(inst.funct3 == FUNCT3_ARITH && inst.op1Val == inst.op2Val) {
+                printf("taking branch");
+                inst.nextPC = inst.PC + sext_imm12;
             }
         }
         break;
-
-        inst.nextPC = inst.PC + 4; // default
     }
     
 
@@ -222,14 +239,22 @@ Instruction simArithLogic(Instruction inst) {
             }
 
             //srai (shift right, fill with sign bit) (not tested)
-            else if (inst.funct3 == FUNCT3_RSHIFT && funct7==FUNCT7_SUBSHIFT){
+            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_SUBSHIFT){
                 uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 int64_t val = (int64_t)inst.op1Val;              
                 inst.arithResult = val >> shamt; 
             }
 
+            //srli (shift right, fill with 0) not tested
+            else if (inst.funct3==FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADD){
+                uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
+                uint64_t val = (uint64_t)inst.op1Val;            // unsigned
+                uint64_t result64 = val >> shamt;
+                inst.arithResult = (int64_t) result64;
+            }
+
             //slli (shift left, fill with 0) (not tested)
-            else if (inst.funct3 == FUNCT3_LSHIFT && funct7==FUNCT7_ADDSHIFT){
+            else if (inst.funct3 == FUNCT3_LSHIFT && inst.funct7 == FUNCT7_ADD){
                 uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 uint64_t val = (uint64_t)inst.op1Val;            // unsigned
                 uint64_t result64 = val << shamt;
@@ -273,6 +298,14 @@ Instruction simArithLogic(Instruction inst) {
                 int32_t val32 = (int32_t)(inst.op1Val);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32;   //sign extend to 64 bits
+            }
+            
+            //srliw (shift rigfht immediate, fill with 0, 32 bit) (not tested) (write test case)
+            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADD){
+                uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
+                uint32_t val32 = (uint32_t)(inst.op1Val);  //truncate to 32 bits
+                uint32_t result32 = val32 >> shamt;                 
+                inst.arithResult = (int64_t)(int32_t)result32;   //sign extend to 64 bits
             }
 
             //slliw (shift left immediate, fill with 0, 32 bit) (not tested) (write test case)
@@ -386,7 +419,7 @@ Instruction simArithLogic(Instruction inst) {
                 uint32_t result32 = val32 << shamt;                      
                 inst.arithResult = (int64_t)(int32_t)result32; 
             }
-
+            
         }
     }
     return inst;
@@ -455,6 +488,7 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (!inst.isLegal) {
+            printf("x = %" PRIu64 "\n", inst.opcode);
             fprintf(stderr, "Illegal instruction encountered at PC: 0x%lx\n", inst.PC);
             err = true;
         }
