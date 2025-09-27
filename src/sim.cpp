@@ -85,7 +85,8 @@ Instruction simDecode(Instruction inst) {
 
     switch (inst.opcode) {
         case OP_INTIMM:
-            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_XOR)  {
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || 
+                inst.funct3 == FUNCT3_XOR || inst.funct3== FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT)  {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -116,7 +117,7 @@ Instruction simDecode(Instruction inst) {
             break;
             
         case OP_WINTIMM:
-            if (inst.funct3==FUNCT3_ARITH){
+            if (inst.funct3==FUNCT3_ARITH || inst.funct3 == FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT){
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -141,7 +142,7 @@ Instruction simDecode(Instruction inst) {
             break;
         
         case OP_R_32BIT:
-            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_RSHIFT){
+            if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT){
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -206,28 +207,48 @@ Instruction simArithLogic(Instruction inst) {
     inst.opcode = inst.instruction & 0b1111111;
     switch (inst.opcode) {
         case OP_INTIMM: {
-            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
-            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
 
+            //addi
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + sext_imm12;
             }
 
+            //andi
             else if (inst.funct3 == FUNCT3_AND){
                 inst.arithResult = inst.op1Val & sext_imm12;
             }
 
+            //ori
             else if (inst.funct3 == FUNCT3_OR){
                 inst.arithResult = inst.op1Val | sext_imm12;
             }
 
+            //xori
             else if(inst.funct3 == FUNCT3_XOR){
                 inst.arithResult = inst.op1Val ^ sext_imm12;
+            }
+
+            //srai (shift right, fill with sign bit) (not tested)
+            else if (inst.funct3 == FUNCT3_RSHIFT){
+                uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
+                int64_t val = (int64_t)inst.op1Val;              
+                inst.arithResult = val >> shamt; 
+            }
+
+            //slli (shift left, fill with 0) (not tested)
+            else if (inst.funct3 == FUNCT3_LSHIFT){
+                uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
+                uint64_t val = (uint64_t)inst.op1Val;            // unsigned
+                uint64_t result64 = val << shamt;
+                inst.arithResult = (int64_t) result64;
             }
 
             break;
         }   
 
+        //auipic
         case OP_U_AUIPC: {
             uint64_t imm12  = inst.instruction >> 12 & 0b11111111111111111111;
             inst.arithResult = inst.PC + imm12;
@@ -238,53 +259,130 @@ Instruction simArithLogic(Instruction inst) {
         case OP_WINTIMM: {
             
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
+            int32_t imm12_sext = (imm12 & 0x800) ? (imm12 | 0xFFFFF000) : imm12;
+
+            //addiw (does this make sense??)
             if (inst.funct3 == FUNCT3_ARITH){
-                inst.arithResult = inst.op1Val + imm12;
+                int32_t val32 = (int32_t)(inst.op1Val); //truncate to 32 bits                
+                int32_t result32 = val32 + imm12_sext;
+                inst.arithResult = (int64_t)result32; //sign extend to 64 bits
             }
+
+            //sraiw (shift right immediate, fill with sign bit, 32 bit) (not tested)
+            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_SUBSHIFT){
+                uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
+                int32_t val32 = (int32_t)(inst.op1Val);  //truncate to 32 bits
+                int32_t result32 = val32 >> shamt;                 
+                inst.arithResult = (int64_t)result32;   //sign extend to 64 bits
+            }
+
+            //slliw (shift left immediate, fill with 0, 32 bit) (not tested) (write test case)
+            else if (inst.funct3 == FUNCT3_LSHIFT && inst.funct7==FUNCT7_ADD){
+                uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
+                uint32_t val32 = (uint32_t)(inst.op1Val);  //truncate to 32 bits
+                uint32_t result32 = val32 << shamt;                 
+                inst.arithResult = (int64_t)(int32_t)result32;   //sign extend to 64 bits
+            }
+            
             break;
         }
 
         case OP_R_64BIT: {
+
+            //and
             if (inst.funct3 == FUNCT3_AND && inst.funct7 == FUNCT7_ADD){
                 inst.arithResult = inst.op1Val & inst.op2Val;
             }
+
+            //or
             else if (inst.funct3 == FUNCT3_OR && inst.funct7 == FUNCT7_ADD){
                 inst.arithResult = inst.op1Val | inst.op2Val;
             }
+
+            //xor
             else if (inst.funct3 == FUNCT3_XOR && inst.funct7 == FUNCT7_ADD) {
                 inst.arithResult = inst.op1Val ^ inst.op2Val;
             }
-            else if (inst.funct7 == FUNCT7_ADD){
+
+            //add
+            else if (inst.funct7 == FUNCT7_ADD && inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + inst.op2Val;
             }
+
+            //sub
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val - inst.op2Val;
             }
+
+            //srl (shift right, fill leftmost bits with 0) (not tested)
+            else if (inst.funct7 == FUNCT7_ADD && inst.funct3==FUNCT3_RSHIFT){
+                uint64_t shamt = inst.op2Val & 0b111111;  //shift amount lower 6 bits 
+                uint64_t val = inst.op1Val;            // unsigned
+                inst.arithResult = val >> shamt;     
+            }
+
+            //sra (shift right, fill left bits with sign bit)
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT){
-                uint64_t shamt = inst.op2Val & 0x3F; // shift amount 0-63
+                uint64_t shamt = inst.op2Val & 0b111111; // shift amount lower 6 bits
                 int64_t val = (int64_t)inst.op1Val;              
                 inst.arithResult = val >> shamt; 
-            }            
+            }           
+            
+            //sll (shift left, fill with 0) (not tested)
+            else if (inst.funct7 == FUNCT7_ADD && inst.funct3==FUNCT3_LSHIFT){
+                uint64_t shamt = inst.op2Val & 0b111111; //shift amount lower 6 bits
+                uint64_t val = inst.op1Val;            // unsigned
+                inst.arithResult = val << shamt;    
+            }
+
             break;
         }
 
         case OP_R_32BIT:{
-            if (inst.funct7== FUNCT7_ADD){
-                int32_t sum32 = (int32_t)(inst.op1Val + inst.op2Val); // truncate to 32 bits
+            
+            //addw (what if we have overflow....)
+            if (inst.funct7== FUNCT7_ADD && inst.funct3==FUNCT3_ARITH){
+                uint32_t a32= (uint32_t)(inst.op1Val);
+                uint32_t b32 = (uint32_t)(inst.op2Val);
+                int32_t sum32 = (int32_t)(a32 + b32); // truncate to 32 bits
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
+            //subw
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_ARITH) {
-                int32_t sum32 = (int32_t)(inst.op1Val - inst.op2Val); // truncate to 32 bits
+                uint32_t a32= (uint32_t)(inst.op1Val);
+                uint32_t b32 = (uint32_t)(inst.op2Val);
+                int32_t sum32 = (int32_t)(a32 - b32); // truncate to 32 bits
                 inst.arithResult = (int64_t)sum32; //sign extend to 64 bits
             }
 
+            //srlw (shift right fill with 0 for 32 bit) (not tested)
+            else if (inst.funct7 == FUNCT7_ADD && inst.funct3 == FUNCT3_RSHIFT) {
+                uint64_t shamt = inst.op2Val & 0b11111;                     // shift amount lower 5 bits
+                uint32_t val32  = (uint32_t)(inst.op1Val); // truncate to 32 bits (unsigned)
+                uint32_t result32 = val32 >> shamt;                      
+                inst.arithResult = (int64_t)(int32_t)result32; 
+            }
+
+            //sraw (shift right fill with sign bit, 32 bit) (may need to test)
             else if (inst.funct7 == FUNCT7_SUBSHIFT && inst.funct3 == FUNCT3_RSHIFT) {
-                uint64_t shamt = inst.op2Val & 0x1F;                  // shift amount 0-31
-                int32_t val32 = (int32_t)(inst.op1Val & 0xFFFFFFFF);  //truncate to 32 bits
+                uint64_t shamt = inst.op2Val & 0b11111;                  // shift amount lower 5 bits
+                int32_t val32 = (int32_t)(inst.op1Val);  //truncate to 32 bits
                 int32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)result32; //sign extend to 64 bits
             }
+
+            //sllw (shift left fill with 0 , 32bit) (write test case)
+            else if (inst.funct7==FUNCT7_ADD && inst.funct3 ==FUNCT3_LSHIFT){
+                uint64_t shamt = inst.op2Val & 0b11111;                     // shift amountlower 5 bits
+                uint32_t val32  = (uint32_t)(inst.op1Val); // truncate to 32 bits
+                uint32_t result32 = val32 << shamt;                      
+                inst.arithResult = (int64_t)(int32_t)result32; 
+            }
+
+            //slliw (shift left fill with 0, 32 bit) (not tested)
+            else if (inst.funct7 ==)
+            
         }
     }
     return inst;
