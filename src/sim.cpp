@@ -472,7 +472,7 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (!inst.isLegal) {
-            printf("x = %" PRIu64 "\n", inst.opcode);
+            printf("opcode = %" PRIu64 "\n", inst.opcode);
             fprintf(stderr, "Illegal instruction encountered at PC: 0x%lx\n", inst.PC);
             err = true;
         }
