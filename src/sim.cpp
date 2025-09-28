@@ -164,6 +164,7 @@ Instruction simDecode(Instruction inst) {
             else{
                 inst.isLegal = false;
             }
+            break;
 
         case OP_R_64BIT:
             if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_AND || inst.funct3 == FUNCT3_OR ||
@@ -197,8 +198,8 @@ Instruction simDecode(Instruction inst) {
             inst.writesRd = true;
             inst.readsRs1 = false;
             inst.readsRs2 = false;
-            
             break;
+
         case OP_S_STORE:
             if (inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_LSHIFT || inst.funct3 == FUNCT3_LOAD) {
                 inst.doesArithLogic = false;
@@ -211,6 +212,7 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+
         case OP_JALR:
             if(inst.funct3 == FUNCT3_ARITH) {
                 inst.writesRd = false;
@@ -222,7 +224,6 @@ Instruction simDecode(Instruction inst) {
             }
             break;
 
-        
         default:
             inst.isLegal = false;
     }
