@@ -217,7 +217,6 @@ Instruction simDecode(Instruction inst) {
             if(inst.funct3 == FUNCT3_ARITH) {
                 inst.writesRd = false;
                 inst.readsRs1 = true;
-
             }
             else{
                 inst.isLegal = false;
@@ -271,7 +270,7 @@ uint32_t getUJImmediate(Instruction inst) {
     uint32_t bit11 = (inst.instruction >> 20) & 0b1;       
     uint32_t bits19_12 = (inst.instruction >> 12) & 0b11111111;      
 
-    uint32_t immediate = (bit20) << 12 | bits19_12 << 12 | (bit11) << 11 | (bits10_1 << 1);
+    uint32_t immediate = (bit20) << 20 | bits19_12 << 12 | (bit11) << 11 | (bits10_1 << 1);
     print_binary(immediate);
     return immediate;
 }
@@ -313,6 +312,7 @@ Instruction simNextPCResolution(Instruction inst) {
             }
             break;
         }
+
         case OP_UJ_JAL: {
             inst.arithResult = inst.PC + 4; // R[rd] = PC+4
             uint64_t imm20 = getUJImmediate(inst);
@@ -320,6 +320,7 @@ Instruction simNextPCResolution(Instruction inst) {
             inst.nextPC = inst.PC + sext_imm20;
             break;
         }
+
         case OP_JALR: {
             inst.arithResult = inst.PC + 4;
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
@@ -383,14 +384,6 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = (int64_t) result64;
             }
 
-            //srli (shift right, fill with 0) not tested
-            else if (inst.funct3==FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADDSHIFT){
-                uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
-                uint64_t val = (uint64_t)inst.op1Val;            // unsigned
-                uint64_t result64 = val >> shamt;
-                inst.arithResult = (int64_t) result64;
-            }
-
             //slti (set less than imm rd = 1 if rs1 < imm)
             else if (inst.funct3==FUNCT3_LOAD){
                 if ((int64_t)inst.op1Val < sext_imm12) {
@@ -451,14 +444,6 @@ Instruction simArithLogic(Instruction inst) {
                 uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
                 uint32_t val32 = (uint32_t)(inst.op1Val);  //truncate to 32 bits
                 uint32_t result32 = val32 << shamt;                 
-                inst.arithResult = (int64_t)(int32_t)result32;   //sign extend to 64 bits
-            }
-
-            //srliw (shift rigfht immediate, fill with 0, 32 bit) (not tested) (write test case)
-            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADDSHIFT){
-                uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
-                uint32_t val32 = (uint32_t)(inst.op1Val);  //truncate to 32 bits
-                uint32_t result32 = val32 >> shamt;                 
                 inst.arithResult = (int64_t)(int32_t)result32;   //sign extend to 64 bits
             }
             
@@ -652,7 +637,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
         }
 
         //lbu: 8 bit fill with 0
-        else if (inst.funct3== FUNCT3_OR){
+        else if (inst.funct3== FUNCT3_XOR){
             uint64_t val = 0;
             myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
             inst.arithResult = (int64_t)val; 
@@ -690,7 +675,9 @@ Instruction simCommit(Instruction inst, REGS &regData) {
         inst.arithResult = imm20 << 12;
     }
                 
-    regData.registers[inst.rd] = inst.arithResult;
+    if (inst.writesRd && inst.rd != 0) {
+        regData.registers[inst.rd] = inst.arithResult;
+    }
 
     return inst;
 }
