@@ -1,0 +1,4 @@
+lui t0, 0x12345   # t0 = 0x12345000
+lui t1, 0xABCDE   # t1 = 0xABCDE000
+
+.word 0xfeedfeed

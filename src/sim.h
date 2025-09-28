@@ -38,6 +38,7 @@ enum OPCODES {
     // U-type opcode
     OP_U_AUIPC = 0b0010111, // add upper immediate to PC
     OP_SB_BRANCH = 0b1100011, // All branch instructions
+    OP_LUI = 0b0110111, //lui
     // UJ-type opcode
     OP_UJ_JAL = 0b1101111, 
     // S-type opcode

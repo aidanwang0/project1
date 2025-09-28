@@ -127,6 +127,13 @@ Instruction simDecode(Instruction inst) {
             }
             break;
 
+        case OP_LUI:
+            inst.doesArithLogic = false;
+            inst.writesRd = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
+            break;
+
         case OP_U_AUIPC:
             inst.doesArithLogic = true;
             inst.writesRd = true;
@@ -240,6 +247,7 @@ void print_binary(uint32_t value) {
     }
     putchar('\n');
 }
+
 //constructs the immediate for sb types
 int32_t getSBImmediate(Instruction inst) {
     printInstructionBinary(inst);
@@ -253,7 +261,7 @@ int32_t getSBImmediate(Instruction inst) {
     return immediate;
 }
 
-
+//constructs immediate for uj
 uint32_t getUJImmediate(Instruction inst) {
     // extract bits
     printInstructionBinary(inst);
@@ -262,7 +270,6 @@ uint32_t getUJImmediate(Instruction inst) {
     uint32_t bit11 = (inst.instruction >> 20) & 0b1;       
     uint32_t bits19_12 = (inst.instruction >> 12) & 0b11111111;      
 
-    //move this shift up by 1?
     uint32_t immediate = (bit20) << 12 | bits19_12 << 12 | (bit11) << 11 | (bits10_1 << 1);
     print_binary(immediate);
     return immediate;
@@ -403,12 +410,11 @@ Instruction simArithLogic(Instruction inst) {
             break;
         }   
 
-        //auipic
+        //auipc
         case OP_U_AUIPC: {
             uint64_t imm12  = inst.instruction >> 12 & 0b11111111111111111111;
             inst.arithResult = inst.PC + imm12;
             break;
-
         }
 
         case OP_WINTIMM: {
@@ -677,6 +683,12 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
 Instruction simCommit(Instruction inst, REGS &regData) {
 
     // regData here is passed by reference, so changes will be reflected in original
+    if (inst.opcode == OP_LUI){
+        //load upper immedaite
+        uint64_t imm20  = inst.instruction >> 12 & 0b11111111111111111111; //upper 20 bits
+        inst.arithResult = imm20 << 12;
+    }
+                
     regData.registers[inst.rd] = inst.arithResult;
 
     return inst;
