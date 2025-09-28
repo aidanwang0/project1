@@ -23,8 +23,7 @@
 
 ### Did you encounter any serious problems? If yes, please describe (e.g spec was unclear).
 
-- [Yes/No]
-- [If yes, please describe the problems encountered]
+- No
 
 ## Additional Comments
 
@@ -41,7 +40,7 @@
 - Refer to the syllabus generative AI tools policy: the policy for use of AI assistants parallels that for human collaboration. Remember that you cannot directly generate code that you submit. 
 - Write "N/A" if you did not use generative AI for any help during this project.
 
-- [describe how you used generate AI or N/A]
+- N/A
 
 ## Acknowledgement of Original Work
 
@@ -53,5 +52,5 @@
 >
 >> This programming assignment represents my own work in accordance with University regulations and the course syllabus.  /s/ Ada Lovelace
 
-- [Acknowledgement of student 1]
+- /s/ Aidan Wang
 - [Acknowledgement of student 2]
