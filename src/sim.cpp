@@ -1,6 +1,12 @@
 #include "sim.h"
 #include "inttypes.h"
 
+#include <iostream>
+#include <bitset>
+
+
+
+
 using namespace std;
 
 // RV64I without csr, environment, or fence instructions
@@ -12,6 +18,15 @@ using namespace std;
 // SB type: | imm[12|10:5] | rs2 | rs1 | funct3 | imm[4:1|11] | opcode |
 // U  type: | imm[31:12]                        | rd          | opcode |
 // UJ type: | imm[20|10:1|11|19:12]             | rd          | opcode |
+
+void printInstructionBinary(const Instruction &inst) {
+    // Use std::bitset<32> to print the lower 32 bits in binary
+    std::bitset<32> bits(inst.instruction & 0xFFFFFFFF);
+    std::cout << "PC = 0x" << std::hex << inst.PC
+              << " Instruction = 0b" << bits
+              << " (0x" << std::hex << (inst.instruction & 0xFFFFFFFF) << ")"
+              << std::dec << std::endl;
+}
 
 // initialize memory with program binary
 bool initMemory(char *programFile, MemoryStore *myMem) {
@@ -87,7 +102,8 @@ Instruction simDecode(Instruction inst) {
     switch (inst.opcode) {
         case OP_INTIMM:
             if (inst.funct3 == FUNCT3_ARITH || inst.funct3 ==FUNCT3_AND || inst.funct3 == FUNCT3_OR || 
-                inst.funct3 == FUNCT3_XOR || inst.funct3== FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT)  {
+                    inst.funct3 == FUNCT3_XOR || inst.funct3== FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT ||
+                    inst.funct3 == FUNCT3_LOAD)  {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -99,8 +115,9 @@ Instruction simDecode(Instruction inst) {
             break;
 
         case OP_SB_BRANCH:
-            if (inst.funct3== FUNCT3_ARITH){
-                inst.doesArithLogic = true;
+            if (inst.funct3== FUNCT3_ARITH || inst.funct3 == FUNCT3_LSHIFT || inst.funct3 == FUNCT3_XOR || inst.funct3 == FUNCT3_RSHIFT || 
+                inst.funct3 == FUNCT3_OR || inst.funct3 == FUNCT3_AND){
+                inst.doesArithLogic = false;
                 inst.writesRd = false;
                 inst.readsRs1 = true;
                 inst.readsRs2 = true;
@@ -129,9 +146,22 @@ Instruction simDecode(Instruction inst) {
             }
             break;
 
+        case OP_LOAD:
+            if (inst.funct3 == FUNCT3_LOAD || inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_LSHIFT ||
+                inst.funct3 == FUNCT3_ARITH){
+                inst.doesArithLogic=false;
+                inst.writesRd=true;
+                inst.readsRs1= true;
+                inst.readsRs2=false;
+            }
+            else{
+                inst.isLegal = false;
+            }
+
         case OP_R_64BIT:
             if (inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_AND || inst.funct3 == FUNCT3_OR ||
-                 inst.funct3 == FUNCT3_XOR  || inst.funct3 == FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT) {
+                    inst.funct3 == FUNCT3_XOR  || inst.funct3 == FUNCT3_RSHIFT || inst.funct3 == FUNCT3_LSHIFT ||
+                    inst.funct3 == FUNCT3_LOAD) {
                 inst.doesArithLogic = true;
                 inst.writesRd = true;
                 inst.readsRs1 = true;
@@ -154,7 +184,37 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+        
+        case OP_UJ_JAL:
+            inst.doesArithLogic = false;
+            inst.writesRd = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
             
+            break;
+        case OP_S_STORE:
+            if (inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_LSHIFT || inst.funct3 == FUNCT3_LOAD) {
+                inst.doesArithLogic = false;
+                inst.writesRd = false;
+                inst.readsRs1 = true;
+                inst.readsRs2 = true;
+                inst.writesMem = true;
+            }
+            else{
+                inst.isLegal = false;
+            }
+            break;
+        case OP_JALR:
+            if(inst.funct3 == FUNCT3_ARITH) {
+                inst.writesRd = false;
+                inst.readsRs1 = true;
+
+            }
+            else{
+                inst.isLegal = false;
+            }
+            break;
+
         
         default:
             inst.isLegal = false;
@@ -172,16 +232,39 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     return inst;
 }
 
+
+void print_binary(uint32_t value) {
+    for (int i = 31; i >= 0; i--) {
+        putchar((value & (1u << i)) ? '1' : '0');
+        if (i % 4 == 0) putchar(' '); // optional: add a space every 4 bits
+    }
+    putchar('\n');
+}
 //constructs the immediate for sb types
 int32_t getSBImmediate(Instruction inst) {
-
+    printInstructionBinary(inst);
     uint32_t bit12 = (inst.instruction >> 31) & 0b1;
     uint32_t bits10_5 = (inst.instruction >> 25) & 0b111111;
     uint32_t bit11 = (inst.instruction >> 7) & 0b1;
     uint32_t bits4_1 = (inst.instruction >> 8) & 0b1111;
 
-    uint32_t immediate = (bit12 << 11) | (bit11 << 10) | (bits10_5 << 4) | (bits4_1);
+    uint32_t immediate = (bit12 << 12) | (bit11 << 11) | (bits10_5 << 5) | (bits4_1 << 1);
+    print_binary(immediate);
+    return immediate;
+}
 
+
+uint32_t getUJImmediate(Instruction inst) {
+    // extract bits
+    printInstructionBinary(inst);
+    uint32_t bit20 = (inst.instruction >> 31) & 0b1;      
+    uint32_t bits10_1 = (inst.instruction >> 21) & 0b1111111111;     
+    uint32_t bit11 = (inst.instruction >> 20) & 0b1;       
+    uint32_t bits19_12 = (inst.instruction >> 12) & 0b11111111;      
+
+    //move this shift up by 1?
+    uint32_t immediate = (bit20) << 12 | bits19_12 << 12 | (bit11) << 11 | (bits10_1 << 1);
+    print_binary(immediate);
     return immediate;
 }
 
@@ -191,21 +274,53 @@ Instruction simNextPCResolution(Instruction inst) {
 
     // default case
     inst.nextPC = inst.PC + 4;
-    printf("PC = %" PRIu64 "\n", inst.PC);
-    printf("nextPC = %" PRIu64 "\n", inst.nextPC);
+
     switch(inst.opcode){
         case OP_SB_BRANCH: {
             uint64_t imm12 = getSBImmediate(inst);
-            printf("x = %" PRIu64 "\n", imm12);
             uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+            // beq
             if(inst.funct3 == FUNCT3_ARITH && inst.op1Val == inst.op2Val) {
-                printf("taking branch");
                 inst.nextPC = inst.PC + sext_imm12;
             }
+            // bne
+            else if(inst.funct3 == FUNCT3_LSHIFT && inst.op1Val != inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
+            }
+            // bge
+            else if(inst.funct3 == FUNCT3_RSHIFT && inst.op1Val >= inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
+            }
+            // bgeu
+            else if(inst.funct3 == FUNCT3_AND && inst.op1Val >= inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
+            }
+            // blt
+            else if(inst.funct3 == FUNCT3_XOR && inst.op1Val < inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
+            }
+            // bltu
+            else if(inst.funct3 == FUNCT3_OR && inst.op1Val < inst.op2Val) {
+                inst.nextPC = inst.PC + sext_imm12;
+            }
+            break;
         }
-        break;
+        case OP_UJ_JAL: {
+            inst.arithResult = inst.PC + 4; // R[rd] = PC+4
+            uint64_t imm20 = getUJImmediate(inst);
+            uint64_t sext_imm20 = (imm20 & 0x80000) ? (imm20 | 0xFFFFFFFFFFF00000) : imm20;
+            inst.nextPC = inst.PC + sext_imm20;
+            break;
+        }
+        case OP_JALR: {
+            inst.arithResult = inst.PC + 4;
+            uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
+
+            inst.nextPC = inst.op1Val + sext_imm12;
+            break;
+        }
     }
-    
 
     return inst;
 }
@@ -217,7 +332,6 @@ Instruction simArithLogic(Instruction inst) {
         case OP_INTIMM: {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
             uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
-
             //addi
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + sext_imm12;
@@ -246,7 +360,7 @@ Instruction simArithLogic(Instruction inst) {
             }
 
             //srli (shift right, fill with 0) not tested
-            else if (inst.funct3==FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADD){
+            else if (inst.funct3==FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADDSHIFT){
                 uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 uint64_t val = (uint64_t)inst.op1Val;            // unsigned
                 uint64_t result64 = val >> shamt;
@@ -254,7 +368,7 @@ Instruction simArithLogic(Instruction inst) {
             }
 
             //slli (shift left, fill with 0) (not tested)
-            else if (inst.funct3 == FUNCT3_LSHIFT && inst.funct7 == FUNCT7_ADD){
+            else if (inst.funct3 == FUNCT3_LSHIFT && inst.funct7 == FUNCT7_ADDSHIFT){
                 uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 uint64_t val = (uint64_t)inst.op1Val;            // unsigned
                 uint64_t result64 = val << shamt;
@@ -262,13 +376,30 @@ Instruction simArithLogic(Instruction inst) {
             }
 
             //srli (shift right, fill with 0) not tested
-            else if (inst.funct3==FUNCT3_RSHIFT && funct7==FUNCT7_ADDSHIFT){
+            else if (inst.funct3==FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADDSHIFT){
                 uint64_t shamt = (inst.instruction >> 20) & 0b111111; //shift amount lower 6bits
                 uint64_t val = (uint64_t)inst.op1Val;            // unsigned
                 uint64_t result64 = val >> shamt;
                 inst.arithResult = (int64_t) result64;
             }
 
+            //slti (set less than imm rd = 1 if rs1 < imm)
+            else if (inst.funct3==FUNCT3_LOAD){
+                if ((int64_t)inst.op1Val < sext_imm12) {
+                    inst.arithResult = 1; 
+                } else {
+                    inst.arithResult = 0;  
+                }
+            }
+
+            //sltiu (set less than imm)
+            else if (inst.funct3==FUNCT3_DOUBLELOADSTORE){
+                if ((uint64_t)inst.op1Val < imm12) {
+                    inst.arithResult = 1; 
+                } else {
+                    inst.arithResult = 0;  
+                }
+            }
             break;
         }   
 
@@ -301,7 +432,7 @@ Instruction simArithLogic(Instruction inst) {
             }
             
             //srliw (shift rigfht immediate, fill with 0, 32 bit) (not tested) (write test case)
-            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADD){
+            else if (inst.funct3 == FUNCT3_RSHIFT && inst.funct7==FUNCT7_ADDSHIFT){
                 uint64_t shamt = (inst.instruction >> 20) & 0b11111;    // shift amount lower 5 bits
                 uint32_t val32 = (uint32_t)(inst.op1Val);  //truncate to 32 bits
                 uint32_t result32 = val32 >> shamt;                 
@@ -375,6 +506,24 @@ Instruction simArithLogic(Instruction inst) {
                 inst.arithResult = val << shamt;    
             }
 
+            //slt (set less than, rd=1 if r1 <r2)
+            else if (inst.funct7 == FUNCT7_ADDSHIFT && inst.funct3 == FUNCT3_LOAD){
+                if ((int64_t)inst.op1Val < (int64_t)inst.op2Val) {
+                    inst.arithResult = 1; 
+                } else {
+                    inst.arithResult = 0;  
+                }
+            }
+
+            //sltu (set less than unsigned)
+            else if (inst.funct7 == FUNCT7_ADDSHIFT && inst.funct3 == FUNCT3_DOUBLELOADSTORE){
+                if ((uint64_t)inst.op1Val < (uint64_t)inst.op2Val) {
+                    inst.arithResult = 1; 
+                } else {
+                    inst.arithResult = 0;  
+                }
+            }
+
             break;
         }
 
@@ -426,13 +575,101 @@ Instruction simArithLogic(Instruction inst) {
     
 }
 
+
 // Generate memory address for load/store instructions
 Instruction simAddrGen(Instruction inst) {
+
+    //address = rs1 + imm
+    if (inst.opcode == OP_LOAD) {
+        int32_t imm12 = (inst.instruction >> 20) & 0b111111111111;
+        int32_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFF000) : imm12;
+        inst.memAddress = inst.op1Val + sext_imm12;
+    }
+    else if (inst.opcode == OP_S_STORE) {
+        int32_t bits11_5 = (inst.instruction >> 25) & 0b1111111;
+        int32_t bits4_0 = (inst.instruction >> 7) & 0b11111;
+
+        int32_t imm12 = (bits11_5 << 5) | (bits4_0);
+        int32_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFF000) : imm12;
+
+        inst.memAddress = inst.op1Val + sext_imm12;
+    }
     return inst;
 }
 
+
 // Perform memory access for load/store instructions
 Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
+
+    if (inst.opcode == OP_LOAD) {
+        //lw: 32 bit
+        if (inst.funct3== FUNCT3_LOAD){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+
+        //lwu: 32 bit fill with 0
+        else if (inst.funct3== FUNCT3_OR){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+        
+        //ld: 64 bit
+        else if (inst.funct3==FUNCT3_DOUBLELOADSTORE){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, DOUBLE_SIZE);
+            inst.arithResult = val; 
+        }
+
+        //lh: 16 bit
+        else if (inst.funct3== FUNCT3_LSHIFT){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+
+        //lhu: 16 bit fill with 0
+        else if (inst.funct3== FUNCT3_RSHIFT){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+
+        //lb: 8bit
+        else if (inst.funct3== FUNCT3_ARITH){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+
+        //lbu: 8 bit fill with 0
+        else if (inst.funct3== FUNCT3_OR){
+            uint64_t val = 0;
+            myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
+            inst.arithResult = (int64_t)val; 
+        }
+  
+    }
+    else if (inst.opcode == OP_S_STORE) {
+        //sw
+        if (inst.funct3 == FUNCT3_LOAD) {
+            myMem->setMemValue(inst.memAddress, inst.op2Val, WORD_SIZE);
+        }
+        //sd
+        if (inst.funct3 == FUNCT3_DOUBLELOADSTORE) {
+            myMem->setMemValue(inst.memAddress, inst.op2Val, DOUBLE_SIZE);
+        }
+        //sb
+        else if(inst.funct3 == FUNCT3_ARITH) {
+            myMem->setMemValue(inst.memAddress, inst.op2Val, BYTE_SIZE);
+        }
+        //sh
+        else if(inst.funct3 == FUNCT3_LSHIFT) {
+            myMem->setMemValue(inst.memAddress, inst.op2Val, HALF_SIZE);
+        }
+    }
     return inst;
 }
 
@@ -489,6 +726,7 @@ int main(int argc, char** argv) {
         }
         if (!inst.isLegal) {
             printf("opcode = %" PRIu64 "\n", inst.opcode);
+            printInstructionBinary(inst);
             fprintf(stderr, "Illegal instruction encountered at PC: 0x%lx\n", inst.PC);
             err = true;
         }
@@ -499,6 +737,3 @@ int main(int argc, char** argv) {
     exit(127);
     return -1;
 }
-
-
-
