@@ -215,8 +215,10 @@ Instruction simDecode(Instruction inst) {
 
         case OP_JALR:
             if(inst.funct3 == FUNCT3_ARITH) {
-                inst.writesRd = false;
+                inst.doesArithLogic = false;
+                inst.writesRd = true;
                 inst.readsRs1 = true;
+                inst.readsRs2= false;
             }
             else{
                 inst.isLegal = false;
