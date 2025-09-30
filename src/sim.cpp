@@ -596,53 +596,53 @@ Instruction simAddrGen(Instruction inst) {
 Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
 
     if (inst.opcode == OP_LOAD) {
-        //lw: 32 bit
 
-        uint64_t val =0;
+        //lw: 32 bit
         if (inst.funct3== FUNCT3_LOAD){
+            uint32_t val;
             myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-            int32_t val = (int32_t)(uint_32t) val;
-            inst.arithResult = (int64_t)val; 
+            inst.arithResult = (int64_t)(int32_t)val; 
         }
 
         //lwu: 32 bit fill with 0
         else if (inst.funct3== FUNCT3_OR){
+            uint32_t val;
             myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-            uint32_t val = (uint32_t) val
             inst.arithResult = (uint64_t)val; 
         }
         
         //ld: 64 bit
         else if (inst.funct3==FUNCT3_DOUBLELOADSTORE){
+            uint64_t val;
             myMem->getMemValue(inst.memAddress, val, DOUBLE_SIZE);
             inst.arithResult = val; 
         }
 
         //lh: 16 bit
         else if (inst.funct3== FUNCT3_LSHIFT){
+            uint16_t val=0;
             myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-            int16_t val = (int16_t)(uint16_t) val
-            inst.arithResult = (int64_t)val; 
+            inst.arithResult = (int64_t)(int16_t)val; 
         }
 
         //lhu: 16 bit fill with 0
         else if (inst.funct3== FUNCT3_RSHIFT){
+            uint16_t val=0;
             myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-            uint16_t val = (uint16_t) val;
             inst.arithResult = (uint64_t)val; 
         }
 
         //lb: 8bit
         else if (inst.funct3== FUNCT3_ARITH){
+            uint8_t val;
             myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-            int8_t val = (int8_t)(uint8_t) val;
-            inst.arithResult = (int64_t)val; 
+            inst.arithResult = (int64_t)(int8_t)val; 
         }
 
         //lbu: 8 bit fill with 0
         else if (inst.funct3== FUNCT3_XOR){
+            uint8_t val;
             myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-            uint8_t val = (uint8_t) val;
             inst.arithResult = (uint64_t)val; 
         }
   
