@@ -152,10 +152,13 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
+                                System.out.println("hi");
+
 
         case OP_LOAD:
             if (inst.funct3 == FUNCT3_LOAD || inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_LSHIFT ||
                 inst.funct3 == FUNCT3_ARITH){
+                    System.out.println("load");
                 inst.doesArithLogic=false;
                 inst.writesRd=true;
                 inst.readsRs1= true;
