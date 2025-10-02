@@ -17,7 +17,7 @@
 
 ### If you used other people's test cases, acknowledge the authors below.
 
-- [Test authors or N/A]
+- Vincent Etherton
 
 ## Challenges Encountered
 
