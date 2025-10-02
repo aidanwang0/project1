@@ -615,7 +615,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
             uint64_t val;
             myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
             // 0 extend the 32 bit value to 64
-            uint64_t ext_val = (val & 0xFFFFFFFF);
+            uint64_t ext_val = (val & 0x00000000FFFFFFFF);
             inst.arithResult = ext_val; 
         }
         
