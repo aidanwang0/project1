@@ -53,7 +53,7 @@ enum FUNCT3 {
     FUNCT3_XOR = 0b100, // xor, lbu
     FUNCT3_RSHIFT = 0b101, //sra, sraw, srai, srli, lhu
     FUNCT3_LSHIFT = 0b001, //sll, sllw, slli,slliw, lh
-    FUNCT3_LOAD = 0b010, //lw, slt, slti
+    FUNCT3_LOAD = 0b010, //lw, slt, slti, sw
     FUNCT3_DOUBLELOADSTORE = 0b011, //ld, sltu, sltiu, sd
 };
 

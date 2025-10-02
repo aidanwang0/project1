@@ -157,7 +157,7 @@ Instruction simDecode(Instruction inst) {
 
         case OP_LOAD:
             if (inst.funct3 == FUNCT3_LOAD || inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_LSHIFT ||
-                inst.funct3 == FUNCT3_ARITH){
+                inst.funct3 == FUNCT3_ARITH || inst.funct3 == FUNCT3_OR){
   
                 inst.doesArithLogic=false;
                 inst.writesRd=true;
@@ -299,10 +299,13 @@ Instruction simNextPCResolution(Instruction inst) {
             else if(inst.funct3 == FUNCT3_LSHIFT && inst.op1Val != inst.op2Val) {
                 inst.nextPC = inst.PC + sext_imm12;
             }
-            // bge
-            else if(inst.funct3 == FUNCT3_RSHIFT && inst.op1Val >= inst.op2Val) {
-                inst.nextPC = inst.PC + sext_imm12;
-            }
+            // bge r1 >= r2
+            else if(inst.funct3 == FUNCT3_RSHIFT){
+                uint64_t diff = inst.op2Val - inst.op1Val; // if rs2-rs1 is negative, or they are equal, then rs1 must be >=
+                if (diff & 0x8000000000000000 || diff == 0x0){
+                    inst.nextPC = inst.PC + sext_imm12;
+                }
+            } 
             // bgeu
             else if(inst.funct3 == FUNCT3_AND && inst.op1Val >= inst.op2Val) {
                 inst.nextPC = inst.PC + sext_imm12;
@@ -617,7 +620,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
             // 0 extend the 32 bit value to 64
             uint64_t ext_val = (val & 0x00000000FFFFFFFF);
             inst.arithResult = ext_val; 
-        }
+        }        
         
         //ld: 64 bit
         else if (inst.funct3==FUNCT3_DOUBLELOADSTORE){
@@ -628,37 +631,45 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
 
         //lh: 16 bit
         else if (inst.funct3== FUNCT3_LSHIFT){
-            uint16_t val=0;
+            uint64_t val=0;
             myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-            inst.arithResult = (int64_t)(int16_t)val; 
+            // sign extend the 16 bit value to 64
+            // check if 16 bit is 1
+            uint64_t sext_val = (val & 0x8000) ? (val |  0xFFFFFFFFFFFF0000) : val;
+            inst.arithResult = sext_val; 
         }
 
         //lhu: 16 bit fill with 0
         else if (inst.funct3== FUNCT3_RSHIFT){
-            uint16_t val=0;
+            uint64_t val=0;
             myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-            inst.arithResult = (uint64_t)val; 
+            uint64_t ext_val = (val & 0x000000000000FFFF);
+            inst.arithResult = ext_val;
         }
 
         //lb: 8bit
         else if (inst.funct3== FUNCT3_ARITH){
-            uint8_t val;
+            uint64_t val;
             myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-            inst.arithResult = (int64_t)(int8_t)val; 
+            uint64_t sext_val = (val & 0x80) ? (val |  0xFFFFFFFFFFFFFF00) : val;
+            inst.arithResult = sext_val; 
         }
 
         //lbu: 8 bit fill with 0
         else if (inst.funct3== FUNCT3_XOR){
-            uint8_t val;
+            uint64_t val;
             myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-            inst.arithResult = (uint64_t)val; 
+            uint64_t ext_val = (val & 0x00000000000000FF);
+            inst.arithResult = ext_val;
         }
   
     }
     else if (inst.opcode == OP_S_STORE) {
         //sw
         if (inst.funct3 == FUNCT3_LOAD) {
+            // printf("op2val = %" PRIu64 "\n", inst.op2Val);
             myMem->setMemValue(inst.memAddress, inst.op2Val, WORD_SIZE);
+            myMem->printMemory(inst.memAddress, inst.memAddress + WORD_SIZE);
         }
         //sd
         if (inst.funct3 == FUNCT3_DOUBLELOADSTORE) {
