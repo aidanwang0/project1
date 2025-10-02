@@ -152,13 +152,13 @@ Instruction simDecode(Instruction inst) {
                 inst.isLegal = false;
             }
             break;
-                                System.out.println("hi");
+                    
 
 
         case OP_LOAD:
             if (inst.funct3 == FUNCT3_LOAD || inst.funct3 == FUNCT3_DOUBLELOADSTORE || inst.funct3 == FUNCT3_LSHIFT ||
                 inst.funct3 == FUNCT3_ARITH){
-                    System.out.println("load");
+  
                 inst.doesArithLogic=false;
                 inst.writesRd=true;
                 inst.readsRs1= true;
@@ -602,16 +602,21 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
 
         //lw: 32 bit
         if (inst.funct3== FUNCT3_LOAD){
-            uint32_t val;
+            uint64_t val;
             myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-            inst.arithResult = (int64_t)(int32_t)val; 
+            // sign extend the 32 bit value to 64
+            // check if 32 bit is 1
+            uint64_t sext_val = (val & 0x80000000) ? (val |  0xFFFFFFFF00000000) : val;
+            inst.arithResult = sext_val; 
         }
 
         //lwu: 32 bit fill with 0
         else if (inst.funct3== FUNCT3_OR){
-            uint32_t val;
+            uint64_t val;
             myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-            inst.arithResult = (uint64_t)val; 
+            // 0 extend the 32 bit value to 64
+            uint64_t ext_val = (val & 0xFFFFFFFF);
+            inst.arithResult = ext_val; 
         }
         
         //ld: 64 bit
