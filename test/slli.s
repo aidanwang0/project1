@@ -10,6 +10,8 @@ slli t5, a5, 32
 addi a6, zero, 2
 slli t6, a6, 63  
 # t6 = 0x0000000000000000
+.word 0xfeedfeed
+
 #The first test covers the shift to the edge of the register,
 # the second is a shift of a register of all 1s, 
 #the third tests behavior between the 8th and 9th bytes, 
