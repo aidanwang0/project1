@@ -1,5 +1,4 @@
-lui t0, 0x1      
-addi t1, zero, 1  
-add t2, t0, t1    
-addw t3, t0, t1  
+li t1, 0x7FFFFFFF   # x1 = max 32-bit signed
+li t2, 1             # x2 = 1
+addw t3, t1, t2      # x3 = -0x80000000 (wrap-around, sign-extended)
 .word 0xfeedfeed

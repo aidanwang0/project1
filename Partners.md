@@ -3,7 +3,7 @@
 ### Group
 
 - Aidan Wang - aw3483: aw3483@princeton.edu
-- [name_2 - netid_2: email_2]
+- Daniel Li - dl4247: dl4247@princeton.edu
 
 ## Time Investment
 
@@ -17,7 +17,8 @@
 
 ### If you used other people's test cases, acknowledge the authors below.
 
-- Vincent Etherton
+- Vincent Etherton, addioverflow.s
+- Stefan Gjaja, slli.s
 
 ## Challenges Encountered
 
@@ -29,7 +30,8 @@
 
 ### Write any other comments here.
 
-- [comment_1]
+- It was very time consuming to write our own test cases to make sure all 49 instructions were working correctly,
+opposed to having a test case suite that we can run ourselves to quickly check where our errors were.
 - [comment_2]
 
 ## Help Information

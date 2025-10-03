@@ -301,8 +301,9 @@ Instruction simNextPCResolution(Instruction inst) {
             }
             // bge r1 >= r2
             else if(inst.funct3 == FUNCT3_RSHIFT){
-                uint64_t diff = inst.op2Val - inst.op1Val; // if rs2-rs1 is negative, or they are equal, then rs1 must be >=
-                if (diff & 0x8000000000000000 || diff == 0x0){
+                int64_t r1 = (int64_t)inst.op1Val;
+                int64_t r2 = (int64_t)inst.op2Val;
+                if (r1 >=r2) {
                     inst.nextPC = inst.PC + sext_imm12;
                 }
             } 
@@ -312,7 +313,11 @@ Instruction simNextPCResolution(Instruction inst) {
             }
             // blt
             else if(inst.funct3 == FUNCT3_XOR && inst.op1Val < inst.op2Val) {
-                inst.nextPC = inst.PC + sext_imm12;
+                int64_t r1 = (int64_t)inst.op1Val;
+                int64_t r2 = (int64_t)inst.op2Val;
+                if (r1 <r2) {
+                    inst.nextPC = inst.PC + sext_imm12;
+                }
             }
             // bltu
             else if(inst.funct3 == FUNCT3_OR && inst.op1Val < inst.op2Val) {
@@ -334,7 +339,7 @@ Instruction simNextPCResolution(Instruction inst) {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
             uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
 
-            inst.nextPC = inst.op1Val + sext_imm12;
+            inst.nextPC = (inst.op1Val + sext_imm12) &~1;
             break;
         }
     }
@@ -348,7 +353,7 @@ Instruction simArithLogic(Instruction inst) {
     switch (inst.opcode) {
         case OP_INTIMM: {
             uint64_t imm12  = inst.instruction >> 20 & 0b111111111111; //12 bit
-            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit
+            uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12; //sign extend 12 bit    
             //addi
             if (inst.funct3 == FUNCT3_ARITH){
                 inst.arithResult = inst.op1Val + sext_imm12;
@@ -415,7 +420,8 @@ Instruction simArithLogic(Instruction inst) {
         //auipc
         case OP_U_AUIPC: {
             uint64_t imm12  = inst.instruction >> 12 & 0b11111111111111111111;
-            inst.arithResult = inst.PC + imm12;
+            uint64_t shifted_imm = imm12 << 12;
+            inst.arithResult = inst.PC + shifted_imm;
             break;
         }
 
@@ -667,12 +673,11 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
     else if (inst.opcode == OP_S_STORE) {
         //sw
         if (inst.funct3 == FUNCT3_LOAD) {
-            // printf("op2val = %" PRIu64 "\n", inst.op2Val);
             myMem->setMemValue(inst.memAddress, inst.op2Val, WORD_SIZE);
             myMem->printMemory(inst.memAddress, inst.memAddress + WORD_SIZE);
         }
         //sd
-        if (inst.funct3 == FUNCT3_DOUBLELOADSTORE) {
+        else if (inst.funct3 == FUNCT3_DOUBLELOADSTORE) {
             myMem->setMemValue(inst.memAddress, inst.op2Val, DOUBLE_SIZE);
         }
         //sb
