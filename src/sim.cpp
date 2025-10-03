@@ -399,7 +399,7 @@ Instruction simArithLogic(Instruction inst) {
 
             //slti (set less than imm rd = 1 if rs1 < imm)
             else if (inst.funct3==FUNCT3_LOAD){
-                if ((int64_t)inst.op1Val < sext_imm12) {
+                if ((int64_t)inst.op1Val < (int64_t)sext_imm12) {
                     inst.arithResult = 1; 
                 } else {
                     inst.arithResult = 0;  

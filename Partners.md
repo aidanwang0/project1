@@ -19,6 +19,7 @@
 
 - Vincent Etherton, addioverflow.s
 - Stefan Gjaja, slli.s
+- Brian Seo, bne.s
 
 ## Challenges Encountered
 
